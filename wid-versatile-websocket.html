@@ -1,0 +1,41 @@
+<html><head><link rel="import" href="../polymer/polymer.html">
+
+<link rel="import" href="../wid-websocket/wid-websocket.html">
+<link rel="import" href="../promise-polyfill/promise-polyfill.html">
+
+<!--
+Example:
+This element establish a websocket connexion to the wid websocket server.
+It allows the user to subscribe to a channel and get every data updates.
+
+    <wid-versatile-websocket
+      id="ws"
+      token="xxxx"
+      subscription="la.wid.chan.cloud.prod.database.archer"
+      data="{{_data}}">
+    </wid-versatile-websocket>
+@group Wid
+@element wid-versatile-websocket
+@demo demo/index.html
+-->
+</head><body><dom-module id="wid-versatile-websocket">
+
+  <template>
+
+    <style>
+
+      :host {
+        display: none;
+      }
+
+    </style>
+
+    <!-- This component uses a low-level websocket component. -->
+    <wid-websocket id="ws" url="[[url]]" json="" auto="" on-error="_onError" on-message="_onMessage">
+    </wid-websocket>
+
+  </template>
+
+</dom-module>
+
+<script src="wid-versatile-websocket.js"></script></body></html>

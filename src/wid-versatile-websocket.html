@@ -1,0 +1,164 @@
+<link rel="import" href="../polymer/polymer.html">
+
+<link rel="import" href="../wid-websocket/wid-websocket.html">
+<link rel="import" href="../promise-polyfill/promise-polyfill.html">
+
+<!--
+Example:
+This element establish a websocket connexion to the wid websocket server.
+It allows the user to subscribe to a channel and get every data updates.
+
+    <wid-versatile-websocket
+      id="ws"
+      token="xxxx"
+      subscription="la.wid.chan.cloud.prod.database.archer"
+      data="{{_data}}">
+    </wid-versatile-websocket>
+@group Wid
+@element wid-versatile-websocket
+@demo demo/index.html
+-->
+<dom-module id="wid-versatile-websocket">
+
+  <template>
+
+    <style>
+
+      :host {
+        display: none;
+      }
+
+    </style>
+
+    <!-- This component uses a low-level websocket component. -->
+    <wid-websocket
+      id="ws"
+      url="[[url]]"
+      json
+      auto
+      on-error="_onError"
+      on-message="_onMessage">
+    </wid-websocket>
+
+  </template>
+
+</dom-module>
+
+<script>
+(function() {
+
+  //we don't do anything until we are authenticated.
+  let _authenticated = false,
+      _resolve, // ugly way to defer resolution
+      _reject, // warning with exceptions thrown in the promise body
+      _authenticationPromise = new Promise((resolve, reject) => {
+        _resolve = resolve;
+        _reject = reject;
+      });
+
+  Polymer({
+    is: 'wid-versatile-websocket',
+
+    properties: {
+      /**
+       * The websocket server url
+       * @type {String}
+       */
+      url: {
+        type: String,
+        value: 'wss://versatile.wid.la/ws'
+      },
+
+      /**
+       * The token used to authenticate the client
+       * @type {String}
+       */
+      token: {
+        type: String
+      },
+
+      /**
+       * Whether the user is authenticated or not.
+       * @type {Boolean}
+       */
+      authenticated: {
+        type: Boolean,
+        notify: true,
+        value: _authenticated
+      },
+
+      /**
+       * The chanel the user subscribes
+       * @type {String}
+       */
+      subscription: {
+        type: String,
+        observer: '_subscriptionChanged'
+      },
+
+      /**
+       * The data receive through the subscribed channel
+       * @type {Object}
+       */
+      data: {
+        type: Object,
+        notify: true,
+        value: function () {
+          return {};
+        }
+      }
+    },
+
+    /**
+     * When the component is ready, we authenticate the user.
+     */
+    ready: function() {
+      if (_authenticated < 1) {
+        this.$.ws.send({
+          code: 'authenticate',
+          token: this.token
+        });
+        _authenticated = 1;
+      }
+    },
+
+    /**
+     * On an error due to the websocket connexion, we unauthenticate the user
+     */
+    _onError: function () {
+      _authenticated = 0;
+      this.authenticated = false;
+      _reject();
+    },
+
+    /**
+     * On message (sent by the websocket) we check fire an event to notify parent that data arrive.
+     * @param  {Event} e Websocket Message Event
+     */
+    _onMessage: function (e) {
+      if (e.detail.data.code === 'ok' && e.detail.data.tag === '') {
+        _authenticated = 2;
+        this.authenticated = true;
+        _resolve();
+      } else if (e.detail.data.code === 'set' && e.detail.data.path === this.subscription) {
+        this.data = e.detail.data;
+        this.fire('data', e.detail.data);
+      }
+    },
+
+    /**
+     * When the subscription channel change, we notify the server with this change.
+     */
+    _subscriptionChanged: function () {
+      // we do something only if we are authenticated
+      _authenticationPromise.then(() => {
+        this.$.ws.send({
+          code: 'subscribe',
+          path: this.subscription
+        });
+      });
+    }
+
+  });
+})();
+</script>
